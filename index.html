@@ -558,11 +558,15 @@ function myTaskCard(t){
     ${t.comments&&t.comments.length?`<div style="margin-bottom:14px">${t.comments.map(c=>`<div style="background:var(--amb-l);border:1px solid rgba(184,134,11,.2);border-left:3px solid var(--amb);border-radius:0 var(--rad) var(--rad) 0;padding:9px 13px;margin-bottom:6px;font-size:13px;line-height:1.55"><span style="font-size:11px;font-weight:700;color:var(--amb);display:block;margin-bottom:3px">💬 ${esc(c.by)} · ${c.at}</span>${esc(c.text)}</div>`).join('')}</div>`:''}
     <div class="row" style="flex-wrap:wrap;gap:8px">
       ${t.due?`<span class="task-due${isOv?' ov':''}">📅 Due: ${fmtD(t.due)}${t.time?' '+t.time:''}</span>`:''}
-      ${t.status!=='Done'?`
-      <div class="row" style="gap:6px;margin-left:auto">
-        <button class="btn btn-sm" style="border-color:var(--amb-l);color:var(--amb)" onclick="window.updSta('${t.id}','In Progress','mytasks')">In Progress</button>
-        <button class="btn btn-sm btn-gold" onclick="window.updSta('${t.id}','Done','mytasks')">Mark Done ✓</button>
-      </div>`:`<span style="font-size:11px;color:var(--grn);margin-left:auto;font-weight:600">✓ Completed</span>`}
+      ${t.status==='Verified'?`<span style="font-size:11px;color:var(--gold);margin-left:auto;font-weight:700">✓ Verified by Partner</span>`:`
+      <div class="row" style="gap:6px;margin-left:auto;align-items:center;flex-wrap:wrap">
+        <select style="font-size:12px;padding:5px 9px;border-radius:var(--rad);border:1px solid var(--bdr);background:var(--surf2);color:var(--tx);font-family:'DM Sans',sans-serif;cursor:pointer" onchange="window.updSta('${t.id}',this.value,'mytasks')">
+          <option value="Pending"${t.status==='Pending'?' selected':''}>Pending</option>
+          <option value="In Progress"${t.status==='In Progress'?' selected':''}>In Progress</option>
+          <option value="Done"${t.status==='Done'?' selected':''}>Done ✓</option>
+        </select>
+        <button class="btn btn-sm" style="color:var(--blue);border-color:rgba(26,58,110,.25)" onclick="window.openCommentModal('${t.id}','${t.title.replace(/'/g,String.fromCharCode(39))}','${t.status}')">💬 Comment</button>
+      </div>`
     </div>
   </div>`;
 }
@@ -625,8 +629,9 @@ async function renderTracker(){
             <td class="mu" style="font-size:11px;font-family:'DM Mono',monospace">${fmtDT(t.createdAt)}</td>
             <td>
               <div class="row" style="gap:5px;flex-wrap:wrap">
-                ${t.status==='Done'&&effSta!=='Verified'?`<button class="btn btn-sm" style="background:var(--gold-l);color:var(--gold);border-color:var(--gold-t);font-weight:600" onclick="window.verifyTask('${t.id}')">✓ Verify</button>`:''}
-                ${(t.status==='Done'||t.status==='In Progress')&&t.status!=='Verified'?`<button class="btn btn-sm" style="color:var(--amb);border-color:rgba(184,134,11,.3);font-weight:500" onclick=\"window.openCommentModal('${t.id}',${JSON.stringify(t.title)},'\${t.status}')\">💬 Comment</button>`:''}
+                ${t.status==='Done'?`<button class="btn btn-sm" style="background:var(--gold-l);color:var(--gold);border-color:var(--gold-t);font-weight:700" onclick="window.verifyTask('${t.id}')">✓ Verify</button>`:''}
+                ${t.status==='Done'?`<button class="btn btn-sm" style="color:var(--amb);border-color:rgba(184,134,11,.35);font-weight:600" onclick="window.revertToInProgress('${t.id}')">↩ In Progress</button>`:''}
+                ${t.status!=='Verified'?`<button class="btn btn-sm" style="color:var(--blue);border-color:rgba(26,58,110,.25)" onclick="window.openCommentModal('${t.id}','${t.title.replace(/'/g,chr(39))}','${t.status}')">💬 Comment</button>`:''}
                 ${t.status==='Verified'?`<span style="font-size:11px;color:var(--grn);font-weight:700">✓ Verified</span>`:''}
                 <button class="btn btn-sm btn-r" onclick="window.delTask('${t.id}')">Delete</button>
               </div>
@@ -639,6 +644,12 @@ async function renderTracker(){
 }
 window.setTF=f=>{trkFilter=f;renderTracker();};
 
+
+window.revertToInProgress = async function(tid){
+  if(!confirm('Change this task status back to In Progress?')) return;
+  await setDoc(doc(db,'kra_tasks',tid),{status:'In Progress',revertedBy:sess.name,revertedAt:new Date().toISOString()},{merge:true});
+  renderTracker();
+};
 window.verifyTask=async function(tid){
   await setDoc(doc(db,'kra_tasks',tid),{status:'Verified',verifiedBy:sess.name,verifiedAt:new Date().toISOString()},{merge:true});
   renderTracker();
@@ -804,6 +815,13 @@ let revisionTaskId = null;
 window.openCommentModal = async function(tid, taskTitle, currentStatus){
   revisionTaskId = tid;
   $('cm-task-title').textContent = taskTitle;
+  // Update modal title based on role
+  const modalTitle = document.querySelector('#comment-modal .modal-head-title');
+  if(modalTitle) modalTitle.textContent = sess.canAssign ? '💬 Add Comment' : '💬 Add Comment';
+  // Show/hide revert checkbox based on role
+  const revertLabel = document.querySelector('label[for="cm-revert"]') || $('cm-revert')?.closest('label');
+  const revertRow = $('cm-revert')?.closest('label');
+  if(revertRow) revertRow.style.display = sess.canAssign ? '' : 'none';
   $('cm-comment').value = '';
   // Auto-check revert if task is Done
   if($('cm-revert')) $('cm-revert').checked = (currentStatus === 'Done');
