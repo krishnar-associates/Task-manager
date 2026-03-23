@@ -555,7 +555,7 @@ function myTaskCard(t){
       </div>
     </div>
     ${t.desc?`<div class="mtc-desc">${esc(t.desc)}</div>`:''}
-    ${t.comments&&t.comments.length?`<div style="margin-bottom:14px">${t.comments.filter(c=>sess.canAssign?c.byUid===sess.uid||!c.byUid:true).map(c=>`<div style="background:var(--amb-l);border:1px solid rgba(184,134,11,.2);border-left:3px solid var(--amb);border-radius:0 var(--rad) var(--rad) 0;padding:9px 13px;margin-bottom:6px;font-size:13px;line-height:1.55"><span style="font-size:11px;font-weight:700;color:var(--amb);display:block;margin-bottom:3px">💬 ${esc(c.by)} · ${c.at}</span>${esc(c.text)}</div>`).join('')}</div>`:''}
+    ${t.comments&&t.comments.length?`<div style="margin-bottom:14px">${t.comments.map(c=>`<div style="background:var(--amb-l);border:1px solid rgba(184,134,11,.2);border-left:3px solid var(--amb);border-radius:0 var(--rad) var(--rad) 0;padding:9px 13px;margin-bottom:6px;font-size:13px;line-height:1.55"><span style="font-size:11px;font-weight:700;color:var(--amb);display:block;margin-bottom:3px">💬 ${esc(c.by)} · ${c.at}</span>${esc(c.text)}</div>`).join('')}</div>`:''}
     <div class="row" style="flex-wrap:wrap;gap:8px">
       ${t.due?`<span class="task-due${isOv?' ov':''}">📅 Due: ${fmtD(t.due)}${t.time?' '+t.time:''}</span>`:''}
       ${t.status==='Verified'?`<span style="font-size:11px;color:var(--gold);margin-left:auto;font-weight:700">✓ Verified by Partner</span>`:`
@@ -620,20 +620,19 @@ async function renderTracker(){
             <td style="min-width:180px">
               <div style="font-weight:600;color:var(--navy)">${esc(t.title)}</div>
               ${t.desc?`<div class="mu" style="font-size:11px;margin-top:2px">${esc(t.desc.slice(0,50))}${t.desc.length>50?'...':''}</div>`:''}
-              ${t.comments&&t.comments.length?`<div style="margin-top:5px">${t.comments.filter(c=>sess.canAssign?c.byUid===sess.uid||!c.byUid:true).slice(-2).map(c=>`<div style="font-size:11px;background:var(--amb-l);border-left:2px solid var(--amb);padding:3px 7px;border-radius:0 4px 4px 0;margin-top:3px;color:var(--tx)"><span style="font-weight:700;color:var(--amb)">${esc(c.by)}: </span>${esc(c.text.slice(0,60))}${c.text.length>60?'...':''}</div>`).join('')}</div>`:''}
+              ${t.comments&&t.comments.length?`<div style="margin-top:5px">${t.comments.slice(-2).map(c=>`<div style="font-size:11px;background:var(--amb-l);border-left:2px solid var(--amb);padding:3px 7px;border-radius:0 4px 4px 0;margin-top:3px;color:var(--tx)"><span style="font-weight:700;color:var(--amb)">${esc(c.by)}: </span>${esc(c.text.slice(0,60))}${c.text.length>60?'...':''}</div>`).join('')}</div>`:''}
             </td>
             <td><div class="row" style="gap:7px"><div class="av">${ini(t.assignedToName)}</div><span style="font-weight:500">${esc(t.assignedToName)}</span></div></td>
             <td style="font-family:'DM Mono',monospace;font-size:12px;${isOv?'color:var(--red);font-weight:600':''}">${t.due||'—'}${t.time?' '+t.time:''}</td>
             <td><span class="pri ${priCls[t.priority]||'pri-m'}">${t.priority}</span></td>
-            <td>${sess.canAssign&&t.status!=='Verified'?`<select style="font-size:12px;padding:5px 9px;border-radius:var(--rad);border:1px solid var(--bdr);background:var(--surf2);color:var(--tx);font-family:'DM Sans',sans-serif;cursor:pointer" onchange="window.updSta('${t.id}',this.value,'tracker')"><option value="Pending"${t.status==='Pending'?' selected':''}>Pending</option><option value="In Progress"${t.status==='In Progress'?' selected':''}>In Progress</option><option value="Done"${t.status==='Done'?' selected':''}>Done ✓</option></select>`:`<span class="sta ${staCls[effSta]||'sta-p'}">${effSta}</span>`}</td>
+            <td><span class="sta ${staCls[effSta]||'sta-p'}">${effSta}</span></td>
             <td class="mu" style="font-size:11px;font-family:'DM Mono',monospace">${fmtDT(t.createdAt)}</td>
             <td>
               <div class="row" style="gap:5px;flex-wrap:wrap">
-                ${t.status==='Done'&&sess.canAssign?`<button class="btn btn-sm" style="background:var(--gold-l);color:var(--gold);border-color:var(--gold-t);font-weight:700" onclick="window.verifyTask('${t.id}')">✓ Verify</button>`:''}
-                ${t.status==='Done'&&sess.canAssign?`<button class="btn btn-sm" style="color:var(--amb);border-color:rgba(184,134,11,.35);font-weight:600" onclick="window.revertToInProgress('${t.id}')">↩ In Progress</button>`:''}
+                ${t.status==='Done'?`<button class="btn btn-sm" style="background:var(--gold-l);color:var(--gold);border-color:var(--gold-t);font-weight:700" onclick="window.verifyTask('${t.id}')">✓ Verify</button>`:''}
+                ${t.status==='Done'?`<button class="btn btn-sm" style="color:var(--amb);border-color:rgba(184,134,11,.35);font-weight:600" onclick="window.revertToInProgress('${t.id}')">↩ In Progress</button>`:''}
                 ${t.status!=='Verified'?`<button class="btn btn-sm" style="color:var(--blue);border-color:rgba(26,58,110,.25)" onclick="window.openCommentModal('${t.id}','${t.title.replace(/'/g,chr(39))}','${t.status}')">💬 Comment</button>`:''}
-                ${t.status==='Verified'?`<span style="font-size:11px;color:var(--grn);font-weight:700">✓ Verified</span>`:''} 
-                ${t.status==='Verified'&&sess.canAssign?`<button class="btn btn-sm" style="color:var(--amb);border-color:rgba(184,134,11,.35);font-weight:600" onclick="window.revertVerified('${t.id}')">↩ Revert</button>`:''}
+                ${t.status==='Verified'?`<span style="font-size:11px;color:var(--grn);font-weight:700">✓ Verified</span>`:''}
                 <button class="btn btn-sm btn-r" onclick="window.delTask('${t.id}')">Delete</button>
               </div>
             </td>
@@ -653,11 +652,6 @@ window.revertToInProgress = async function(tid){
 };
 window.verifyTask=async function(tid){
   await setDoc(doc(db,'kra_tasks',tid),{status:'Verified',verifiedBy:sess.name,verifiedAt:new Date().toISOString()},{merge:true});
-  renderTracker();
-};
-window.revertVerified=async function(tid){
-  if(!confirm('Revert this verified task back to In Progress?')) return;
-  await setDoc(doc(db,'kra_tasks',tid),{status:'In Progress',revertedBy:sess.name,revertedAt:new Date().toISOString()},{merge:true});
   renderTracker();
 };
 
@@ -833,12 +827,7 @@ window.openCommentModal = async function(tid, taskTitle, currentStatus){
   if($('cm-revert')) $('cm-revert').checked = (currentStatus === 'Done');
   // Load existing comments
   const snap = await getDoc(doc(db,'kra_tasks',tid));
-  const taskData = snap.exists() ? snap.data() : {};
-  const allComments = taskData.comments||[];
-  // Partner sees only their own comments; member sees all comments on their task
-  const comments = sess.canAssign
-    ? allComments.filter(c => c.byUid===sess.uid || !c.byUid)
-    : allComments;
+  const comments = snap.exists() ? (snap.data().comments||[]) : [];
   const prevEl = $('cm-prev-comments');
   if(prevEl){
     if(comments.length){
@@ -865,7 +854,6 @@ window.submitRevision = async function(){
   const newComment = {
     text: comment,
     by: sess.name,
-    byUid: sess.uid,
     at: new Date().toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
   };
   // Only change status if checkbox is checked
